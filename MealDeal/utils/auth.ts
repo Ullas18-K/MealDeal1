@@ -1,7 +1,12 @@
 // Authentication utility functions
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = "http://localhost:4000/api/auth";
+export const API_BASE_URL = 'http://localhost:4000/api';
+export const API_URL = `${API_BASE_URL}/auth`;
+export const RESTAURANT_API_URL = `${API_BASE_URL}/restaurants`;
+export const ORDER_API_URL = `${API_BASE_URL}/orders`;
+export const REVIEW_API_URL = `${API_BASE_URL}/reviews`;
+export const MENUITEM_API_URL = `${API_BASE_URL}/menuitems`;
 
 // Storage keys
 export const STORAGE_KEYS = {

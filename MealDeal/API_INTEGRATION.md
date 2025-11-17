@@ -15,16 +15,24 @@
 ## Frontend-Backend Connection
 
 ### API Base URL
-Currently set to: `http://localhost:4000/api/auth`
+Currently set to: `http://localhost:4000/api`
+
+| Purpose      | URL                                      |
+|--------------|------------------------------------------|
+| Auth         | `http://localhost:4000/api/auth`         |
+| Restaurants  | `http://localhost:4000/api/restaurants`  |
+| Orders       | `http://localhost:4000/api/orders`       |
 
 **For mobile testing (iOS/Android simulator):**
-- iOS: Use `http://localhost:4000/api/auth`
-- Android: Use `http://10.0.2.2:4000/api/auth` (Android emulator)
-- Physical device: Use your computer's local IP (e.g., `http://192.168.1.X:4000/api/auth`)
+- iOS: Use `http://localhost:4000/api`
+- Android: Use `http://10.0.2.2:4000/api`
+- Physical device: Use your computer's local IP (e.g., `http://192.168.1.X:4000/api`)
 
 ### Available Endpoints
 
-#### 1. Register (Sign Up)
+#### Authentication
+
+##### Register (Sign Up)
 ```typescript
 POST /api/auth/register
 Body: {
@@ -42,7 +50,7 @@ Response: {
 }
 ```
 
-#### 2. Login
+##### Login
 ```typescript
 POST /api/auth/login
 Body: {
@@ -57,7 +65,7 @@ Response: {
 }
 ```
 
-#### 3. Refresh Token
+##### Refresh Token
 ```typescript
 POST /api/auth/refresh
 Body: {
@@ -69,7 +77,7 @@ Response: {
 }
 ```
 
-#### 4. Get Profile (Protected)
+##### Get Profile (Protected)
 ```typescript
 GET /api/auth/profile
 Headers: {
@@ -80,7 +88,7 @@ Response: {
 }
 ```
 
-#### 5. Logout (Protected)
+##### Logout (Protected)
 ```typescript
 POST /api/auth/logout
 Headers: {
@@ -89,6 +97,39 @@ Headers: {
 Response: {
   message: string
 }
+```
+
+#### Restaurants
+
+```typescript
+GET /api/restaurants
+Query params: ?search=veg (optional)
+Response: { restaurants: Restaurant[] }
+
+GET /api/restaurants/:id
+Response: { restaurant: Restaurant }
+
+POST /api/restaurants
+Body: Restaurant payload (admin/seed purposes)
+Response: { restaurant }
+```
+
+#### Orders
+
+```typescript
+POST /api/orders
+Body: {
+  restaurantId: string;
+  customerName: string;
+  customerPhone: string;
+  pickupTime: string;
+  notes?: string;
+  items: { name: string; price: number; quantity: number; notes?: string }[];
+}
+Response: { order: { orderId, ... } }
+
+GET /api/orders/:orderId
+Response: { order }
 ```
 
 ## Token Management

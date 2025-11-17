@@ -1,19 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  FlatList,
   SafeAreaView,
+  Modal,
+  TextInput,
+  Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { RESTAURANT_API_URL } from '@/utils/auth';
 
 // Types
 type DonationStatus = 'Available' | 'Accepted' | 'Completed';
 type FoodType = 'Veg' | 'Non-Veg';
+
+type HotelPartner = {
+  _id: string;
+  name: string;
+  cuisine: string;
+  rating?: number;
+  averageRating?: number;
+  totalReviews?: number;
+  mealsServed?: number;
+  distance?: number;
+  lastDonation?: string;
+  hero?: {
+    imageUrl?: string;
+  };
+  reviewSnippet?: string;
+  description?: string;
+};
+
+interface DonationReview {
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
 
 interface Donation {
   id: string;
@@ -23,6 +51,7 @@ interface Donation {
   location: string;
   status: DonationStatus;
   distance: number; // in km
+  review?: DonationReview;
 }
 
 // Mock Data
@@ -65,14 +94,91 @@ const initialDonations: Donation[] = [
   },
 ];
 
+const partnerHotels: HotelPartner[] = [
+  {
+    _id: 'h1',
+    name: 'Sunrise Business Hotel',
+    cuisine: 'South Indian • Continental',
+    rating: 4.8,
+    averageRating: 4.8,
+    mealsServed: 4200,
+    distance: 2.4,
+    lastDonation: 'Today • 120 veg thalis',
+    hero: {
+      imageUrl:
+        'https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?auto=format&fit=crop&w=800&q=80',
+    },
+    totalReviews: 320,
+    description: 'Portions were generous and still warm when we picked them up.',
+    reviewSnippet: '"Portions were generous and still warm when we picked them up."',
+  },
+  {
+    _id: 'h2',
+    name: 'Gardenia Plaza Suites',
+    cuisine: 'Pan Asian • Indian',
+    rating: 4.6,
+    averageRating: 4.6,
+    mealsServed: 3100,
+    distance: 3.8,
+    lastDonation: 'Yesterday • 85 mixed meals',
+    hero: {
+      imageUrl:
+        'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
+    },
+    totalReviews: 210,
+    description: 'Fresh salads and mains, kids loved the fruits!',
+    reviewSnippet: '"Fresh salads and mains, kids loved the fruits!"',
+  },
+  {
+    _id: 'h3',
+    name: 'Blue Orchid Residency',
+    cuisine: 'North Indian • Bakery',
+    rating: 4.9,
+    averageRating: 4.9,
+    mealsServed: 5100,
+    distance: 1.9,
+    lastDonation: 'Today • 60 breakfast boxes',
+    hero: {
+      imageUrl:
+        'https://images.unsplash.com/photo-1470246973918-29a93221c455?auto=format&fit=crop&w=800&q=80',
+    },
+    totalReviews: 450,
+    description: 'Consistently hygienic packaging and on-time handover.',
+    reviewSnippet: '"Consistently hygienic packaging and on-time handover."',
+  },
+];
+
 export default function NGOHomeScreen() {
   const router = useRouter();
   const [donations, setDonations] = useState<Donation[]>(initialDonations);
+  const [partnerHotels, setPartnerHotels] = useState<HotelPartner[]>([]);
+  const [hotelsLoading, setHotelsLoading] = useState(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 0, comment: '' });
   
   // Filter states
   const [selectedFoodType, setSelectedFoodType] = useState<'All' | FoodType>('All');
   const [selectedDistance, setSelectedDistance] = useState<number>(10); // km
   const [selectedTime, setSelectedTime] = useState<'All' | 'Now' | 'Later'>('All');
+
+  // Load partner hotels from API
+  const loadPartnerHotels = useCallback(async () => {
+    try {
+      setHotelsLoading(true);
+      const response = await fetch(RESTAURANT_API_URL);
+      const data = await response.json();
+      setPartnerHotels(data.restaurants || []);
+    } catch (error) {
+      console.error('Failed to load partner hotels', error);
+    } finally {
+      setHotelsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPartnerHotels();
+  }, [loadPartnerHotels]);
 
   // Handle logout
   const handleLogout = () => {
@@ -90,11 +196,15 @@ export default function NGOHomeScreen() {
 
   // Handle marking as received
   const handleMarkReceived = (id: string) => {
+    const donationToReview = donations.find(donation => donation.id === id) ?? null;
     setDonations(prevDonations =>
       prevDonations.map(donation =>
         donation.id === id ? { ...donation, status: 'Completed' as DonationStatus } : donation
       )
     );
+    setSelectedDonation(donationToReview);
+    setReviewForm({ rating: 0, comment: '' });
+    setReviewModalVisible(true);
   };
 
   // Handle refresh
@@ -118,6 +228,47 @@ export default function NGOHomeScreen() {
   const availableDonations = filteredDonations.filter(d => d.status === 'Available');
   const acceptedDonations = filteredDonations.filter(d => d.status === 'Accepted');
   const completedDonations = filteredDonations.filter(d => d.status === 'Completed');
+  const reviewedDonations = donations.filter(donation => donation.review);
+
+  const handleStarPress = (rating: number) => {
+    setReviewForm(prev => ({ ...prev, rating }));
+  };
+
+  const handleSubmitReview = () => {
+    if (!selectedDonation) {
+      return;
+    }
+
+    if (reviewForm.rating === 0) {
+      Alert.alert('Rating Required', 'Please rate the food before submitting.');
+      return;
+    }
+
+    setDonations(prevDonations =>
+      prevDonations.map(donation =>
+        donation.id === selectedDonation.id
+          ? {
+              ...donation,
+              review: {
+                rating: reviewForm.rating,
+                comment: reviewForm.comment.trim(),
+                createdAt: new Date().toISOString(),
+              },
+            }
+          : donation
+      )
+    );
+
+    setReviewModalVisible(false);
+    setSelectedDonation(null);
+    setReviewForm({ rating: 0, comment: '' });
+  };
+
+  const handleSkipReview = () => {
+    setReviewModalVisible(false);
+    setSelectedDonation(null);
+    setReviewForm({ rating: 0, comment: '' });
+  };
 
   // Get status color
   const getStatusColor = (status: DonationStatus) => {
@@ -191,6 +342,12 @@ export default function NGOHomeScreen() {
           <View style={styles.completedContainer}>
             <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
             <Text style={styles.completedText}>Received</Text>
+            {donation.review && (
+              <View style={styles.reviewPill}>
+                <Ionicons name="star" size={14} color="#FFA500" />
+                <Text style={styles.reviewPillText}>{donation.review.rating.toFixed(1)}</Text>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -220,6 +377,72 @@ export default function NGOHomeScreen() {
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
             <Ionicons name="refresh-outline" size={20} color="#3FAE49" />
           </TouchableOpacity>
+        </View>
+
+        {/* Trusted Hotels */}
+        <View style={styles.partnerSection}>
+          <View style={styles.partnerHeader}>
+            <Text style={styles.partnerTitle}>Trusted Hotel Partners</Text>
+            <Text style={styles.partnerSubtitle}>Curated kitchens with verified reviews</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {hotelsLoading ? (
+              <View style={styles.partnerLoadingContainer}>
+                <ActivityIndicator color="#3FAE49" size="small" />
+                <Text style={styles.partnerLoadingText}>Loading hotels...</Text>
+              </View>
+            ) : partnerHotels.length === 0 ? (
+              <Text style={styles.noHotelsText}>No partner hotels available</Text>
+            ) : (
+              partnerHotels.map(hotel => (
+                <TouchableOpacity
+                  key={hotel._id}
+                  style={styles.partnerCard}
+                  activeOpacity={0.8}
+                  onPress={() => router.push(`/ngo/restaurant/${hotel._id}`)}
+                >
+                  <Image 
+                    source={{ uri: hotel.hero?.imageUrl || 'https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?auto=format&fit=crop&w=800&q=80' }} 
+                    style={styles.partnerImage} 
+                  />
+                  <View style={styles.partnerBadge}>
+                    <Ionicons name="star" size={14} color="#FFD166" />
+                    <Text style={styles.partnerBadgeText}>
+                      {(hotel.averageRating || hotel.rating || 4.5).toFixed(1)}
+                    </Text>
+                  </View>
+                  <View style={styles.partnerInfo}>
+                    <Text style={styles.partnerName}>{hotel.name}</Text>
+                    <Text style={styles.partnerCuisine}>{hotel.cuisine}</Text>
+                    <View style={styles.partnerMetaRow}>
+                      {hotel.distance !== undefined && (
+                        <>
+                          <Ionicons name="location-outline" size={14} color="#3FAE49" />
+                          <Text style={styles.partnerMetaText}>{hotel.distance} km away</Text>
+                        </>
+                      )}
+                      {hotel.totalReviews !== undefined && hotel.totalReviews > 0 && (
+                        <>
+                          <Ionicons name="chatbox-outline" size={14} color="#3FAE49" />
+                          <Text style={styles.partnerMetaText}>{hotel.totalReviews} reviews</Text>
+                        </>
+                      )}
+                    </View>
+                    {hotel.description && (
+                      <Text style={styles.partnerReview} numberOfLines={2}>"{hotel.description}"</Text>
+                    )}
+                    <TouchableOpacity 
+                      style={styles.viewMenuButton}
+                      onPress={() => router.push(`/ngo/restaurant/${hotel._id}`)}
+                    >
+                      <Text style={styles.viewMenuText}>View Menu</Text>
+                      <Ionicons name="arrow-forward" size={14} color="#3FAE49" />
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
         </View>
 
         {/* Map Placeholder */}
@@ -335,7 +558,7 @@ export default function NGOHomeScreen() {
 
         {/* Completed Donations */}
         {completedDonations.length > 0 && (
-          <View style={[styles.section, styles.lastSection]}>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Completed Today</Text>
             {completedDonations.map(donation => (
               <View key={donation.id} style={styles.completedCard}>
@@ -353,7 +576,90 @@ export default function NGOHomeScreen() {
             ))}
           </View>
         )}
+
+        {reviewedDonations.length > 0 && (
+          <View style={[styles.section, styles.lastSection]}>
+            <Text style={styles.sectionTitle}>Community Feedback</Text>
+            {reviewedDonations.map(donation => (
+              <View key={`${donation.id}-review`} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewFood}>
+                    {donation.foodType} • {donation.quantity}
+                  </Text>
+                  <View style={styles.ratingRow}>
+                    {[1, 2, 3, 4, 5].map(value => (
+                      <Ionicons
+                        key={`${donation.id}-rating-${value}`}
+                        name={
+                          donation.review && value <= Math.round(donation.review.rating)
+                            ? 'star'
+                            : 'star-outline'
+                        }
+                        size={16}
+                        color="#FFA500"
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewLocation}>📍 {donation.location}</Text>
+                {donation.review?.comment ? (
+                  <Text style={styles.reviewComment}>{donation.review.comment}</Text>
+                ) : (
+                  <Text style={styles.reviewCommentMuted}>No comment provided.</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
+
+      <Modal visible={reviewModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Review this meal</Text>
+            {selectedDonation && (
+              <Text style={styles.modalSubtitle}>
+                {selectedDonation.foodType} • {selectedDonation.quantity}
+              </Text>
+            )}
+
+            <View style={styles.modalRatingRow}>
+              {[1, 2, 3, 4, 5].map(value => (
+                <TouchableOpacity
+                  key={`modal-star-${value}`}
+                  onPress={() => handleStarPress(value)}
+                  style={styles.modalStarButton}
+                >
+                  <Ionicons
+                    name={value <= reviewForm.rating ? 'star' : 'star-outline'}
+                    size={32}
+                    color="#FFA500"
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Share feedback about freshness, quality, etc."
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={4}
+              value={reviewForm.comment}
+              onChangeText={text => setReviewForm(prev => ({ ...prev, comment: text }))}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalSecondaryButton} onPress={handleSkipReview}>
+                <Text style={styles.modalSecondaryText}>Not now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalPrimaryButton} onPress={handleSubmitReview}>
+                <Text style={styles.modalPrimaryText}>Submit review</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -413,6 +719,124 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 4,
+  },
+  partnerSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  partnerHeader: {
+    marginBottom: 12,
+  },
+  partnerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#222',
+  },
+  partnerSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+  },
+  partnerCard: {
+    width: 260,
+    marginRight: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  partnerImage: {
+    width: '100%',
+    height: 140,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  partnerBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  partnerBadgeText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  partnerInfo: {
+    padding: 14,
+  },
+  partnerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#222',
+  },
+  partnerCuisine: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+  },
+  partnerMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  partnerMetaText: {
+    fontSize: 12,
+    color: '#3FAE49',
+    marginRight: 6,
+  },
+  partnerDonation: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 10,
+    fontWeight: '600',
+  },
+  partnerReview: {
+    fontSize: 12,
+    color: '#555',
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  partnerLoadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    gap: 12,
+  },
+  partnerLoadingText: {
+    color: '#666',
+    fontSize: 13,
+  },
+  noHotelsText: {
+    color: '#666',
+    fontSize: 14,
+    padding: 20,
+  },
+  viewMenuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(63,174,73,0.1)',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  viewMenuText: {
+    color: '#3FAE49',
+    fontSize: 12,
+    fontWeight: '600',
   },
   mapPlaceholder: {
     height: 180,
@@ -591,12 +1015,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+    gap: 8,
   },
   completedText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#4CAF50',
-    marginLeft: 8,
   },
   completedCard: {
     flexDirection: 'row',
@@ -630,6 +1054,135 @@ const styles = StyleSheet.create({
   completedCardLocation: {
     fontSize: 12,
     color: '#666',
+  },
+  reviewPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF4E0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  reviewPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFA500',
+  },
+  reviewCard: {
+    backgroundColor: '#F9FBF9',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E4F2E4',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewFood: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  reviewLocation: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 6,
+  },
+  reviewComment: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  reviewCommentMuted: {
+    fontSize: 13,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContainer: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalRatingRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  modalStarButton: {
+    padding: 4,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalSecondaryButton: {
+    flex: 1,
+    backgroundColor: '#F2F2F2',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalSecondaryText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modalPrimaryButton: {
+    flex: 1,
+    backgroundColor: '#3FAE49',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalPrimaryText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   emptyState: {
     alignItems: 'center',
