@@ -1,2 +1,4 @@
 /mealdeal-backend/node_modules
 /MealDeal/node_modules
+/mealdeal-backend/.env
+/mealdeal-backend/.env.example
