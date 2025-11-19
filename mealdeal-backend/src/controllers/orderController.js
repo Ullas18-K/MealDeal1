@@ -59,3 +59,57 @@ export const getOrderByOrderId = async (req, res) => {
   }
 };
 
+export const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate('restaurant', 'name cuisine location')
+      .sort({ createdAt: -1 });
+
+    res.json({ orders });
+  } catch (error) {
+    console.error('Error fetching all orders', error);
+    res.status(500).json({ message: 'Unable to fetch orders' });
+  }
+};
+
+export const getOrdersByRestaurant = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    const orders = await Order.find({ restaurant: restaurantId })
+      .populate('restaurant', 'name cuisine location')
+      .sort({ createdAt: -1 });
+
+    res.json({ orders });
+  } catch (error) {
+    console.error('Error fetching restaurant orders', error);
+    res.status(500).json({ message: 'Unable to fetch restaurant orders' });
+  }
+};
+
+export const getOrdersByNGO = async (req, res) => {
+  try {
+    const { customerName } = req.params;
+    const decodedName = decodeURIComponent(customerName);
+    
+    console.log('Fetching orders for NGO:', decodedName);
+    
+    // Case-insensitive search for customer name
+    const orders = await Order.find({ 
+      customerName: { $regex: new RegExp(`^${decodedName}$`, 'i') } 
+    })
+      .populate('restaurant', 'name cuisine location')
+      .sort({ createdAt: -1 });
+
+    console.log(`Found ${orders.length} orders for ${decodedName}`);
+    res.json({ orders });
+  } catch (error) {
+    console.error('Error fetching NGO orders', error);
+    res.status(500).json({ message: 'Unable to fetch NGO orders' });
+  }
+};

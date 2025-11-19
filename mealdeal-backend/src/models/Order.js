@@ -24,6 +24,8 @@ const OrderSchema = new mongoose.Schema(
       enum: ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'],
       default: 'pending',
     },
+    acceptedBy: { type: String }, // NGO name who accepted the order
+    acceptedAt: { type: Date },
     notes: { type: String },
   },
   { timestamps: true }
