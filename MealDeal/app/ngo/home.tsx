@@ -12,6 +12,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { RESTAURANT_API_URL } from '@/utils/auth';
@@ -356,6 +357,7 @@ export default function NGOHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#03040f', '#0b1226', '#111f3e']} style={styles.backgroundGradient} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -364,7 +366,7 @@ export default function NGOHomeScreen() {
             <Text style={styles.subText}>Find nearby meals and make a difference today.</Text>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color="#333" />
+            <Ionicons name="log-out-outline" size={24} color="#9BE5C2" />
           </TouchableOpacity>
         </View>
 
@@ -375,9 +377,19 @@ export default function NGOHomeScreen() {
             {availableDonations.length} meals available near you
           </Text>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-            <Ionicons name="refresh-outline" size={20} color="#3FAE49" />
+            <Ionicons name="refresh-outline" size={20} color="#9BE5C2" />
           </TouchableOpacity>
         </View>
+
+        {/* Orders Button */}
+        <TouchableOpacity 
+          style={styles.ordersButton}
+          onPress={() => router.push('/ngo/orders')}
+        >
+          <Ionicons name="receipt-outline" size={22} color="#041018" />
+          <Text style={styles.ordersButtonText}>View My Orders</Text>
+          <Ionicons name="arrow-forward" size={18} color="#041018" />
+        </TouchableOpacity>
 
         {/* Trusted Hotels */}
         <View style={styles.partnerSection}>
@@ -667,7 +679,14 @@ export default function NGOHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#03040f',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   scrollView: {
     flex: 1,
@@ -686,26 +705,30 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#FFFFFF',
     marginBottom: 6,
   },
   subText: {
     fontSize: 14,
-    color: '#666',
+    color: '#9BE5C2',
     lineHeight: 20,
   },
   logoutButton: {
     padding: 8,
+    backgroundColor: 'rgba(155, 229, 194, 0.1)',
+    borderRadius: 8,
   },
   statsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: 'rgba(155, 229, 194, 0.15)',
     marginHorizontal: 20,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 229, 194, 0.3)',
   },
   statsIcon: {
     fontSize: 24,
@@ -715,7 +738,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: '#9BE5C2',
   },
   refreshButton: {
     padding: 4,
@@ -1021,6 +1044,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#4CAF50',
+  },
+  ordersButton: {
+    backgroundColor: '#9BE5C2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#9BE5C2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ordersButtonText: {
+    color: '#041018',
+    fontSize: 16,
+    fontWeight: '700',
   },
   completedCard: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { getAccessToken, getUser, clearAuthData, API_URL, RESTAURANT_API_URL, MENUITEM_API_URL } from '@/utils/auth';
@@ -299,6 +300,7 @@ export default function DonorHome() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#03040f', '#0b1226', '#111f3e']} style={styles.backgroundGradient} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={styles.header}>
@@ -307,9 +309,19 @@ export default function DonorHome() {
             <Text style={styles.subText}>Manage your restaurant menu items!</Text>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color="#333333" />
+            <Ionicons name="log-out-outline" size={24} color="#9BE5C2" />
           </TouchableOpacity>
         </View>
+
+        {/* Orders Button */}
+        <TouchableOpacity 
+          style={styles.ordersButton}
+          onPress={() => router.push('/donor/orders')}
+        >
+          <Ionicons name="receipt-outline" size={22} color="#041018" />
+          <Text style={styles.ordersButtonText}>View Accepted Orders</Text>
+          <Ionicons name="arrow-forward" size={18} color="#041018" />
+        </TouchableOpacity>
 
         {/* Add Menu Item Section */}
         <View style={styles.card}>
@@ -443,30 +455,6 @@ export default function DonorHome() {
               </View>
             </View>
 
-            <View style={styles.inputWrapper}>
-              <Ionicons name="calculator-outline" size={20} color="#3FAE49" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Available Quantity"
-                value={menuForm.quantity}
-                onChangeText={(value) => handleMenuItemChange('quantity', value)}
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputWrapper}>
-              <Ionicons name="time-outline" size={20} color="#3FAE49" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Prep Time (minutes)"
-                value={menuForm.prepTime}
-                onChangeText={(value) => handleMenuItemChange('prepTime', value)}
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-              />
-            </View>
-
             <TouchableOpacity
               style={[styles.submitButton, submittingMenuItem && styles.submitButtonDisabled]}
               onPress={handleSubmitMenuItem}
@@ -591,7 +579,14 @@ export default function DonorHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#03040f',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   scrollView: {
     flex: 1,
@@ -602,34 +597,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingTop: 10,
-    backgroundColor: '#E8F5E9',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    backgroundColor: 'transparent',
   },
   welcomeText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   subText: {
     fontSize: 14,
-    color: '#666666',
+    color: '#9BE5C2',
   },
   logoutButton: {
     padding: 8,
+    backgroundColor: 'rgba(155, 229, 194, 0.1)',
+    borderRadius: 8,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     margin: 16,
     marginBottom: 8,
     padding: 20,
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 229, 194, 0.2)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -639,7 +631,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#9BE5C2',
     marginLeft: 8,
   },
   inputContainer: {
@@ -648,9 +640,11 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F2',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
     paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 229, 194, 0.2)',
   },
   inputIcon: {
     marginRight: 8,
@@ -659,7 +653,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#333333',
+    color: '#FFFFFF',
   },
   uploadButton: {
     flexDirection: 'row',
@@ -691,6 +685,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  ordersButton: {
+    backgroundColor: '#9BE5C2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#9BE5C2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ordersButtonText: {
+    color: '#041018',
+    fontSize: 16,
+    fontWeight: '700',
   },
   restaurantSelector: {
     flex: 1,
@@ -725,7 +740,7 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     fontSize: 15,
-    color: '#333333',
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   toggleButtons: {
